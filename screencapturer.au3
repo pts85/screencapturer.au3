@@ -2,7 +2,7 @@
 ; Script is a modified version of a script found in autoit-forum, where it was released under PUBLIC DOMAIN by user Melba23
 ; Original: https://www.autoitscript.com/forum/topic/117114-capture-mouse-selection/?do=findComment&comment=816497
 ;
-; Modifications: support for: closing child window, showing and saving of coordinates and size, changing of filename
+; Modifications: support for: closing child window, showing and saving of coordinates and size, changing of filename, focusing/activating named window, hotkey
 ; TODO(maybe sometime): Some error handling
 
 #include <GuiConstantsEx.au3>
@@ -10,14 +10,18 @@
 #Include <ScreenCapture.au3>
 #Include <Misc.au3>
 #include <EditConstants.au3>
+#include <ColorConstants.au3>
 
 Global $iX1, $iY1, $iX2, $iY2, $aPos, $sMsg, $sBMP_Path
 
 ; Create GUI
-Global $hMain_GUI = GUICreate("Select Rectangle", 230, 130)
-Global $hRect_Button   = GUICtrlCreateButton("Mark Area",  10, 10, 60, 30)
+Global $hMain_GUI = GUICreate("ScreenCapturer: Select Rectangle", 230, 155)
+Global $hRect_Button = GUICtrlCreateButton("Mark Area",  10, 10, 60, 30)
 Global $hClose_Button = GUICtrlCreateButton("Close",    160, 10, 60, 30)
-
+Global $hHotkeyinfo  = GUICtrlCreateEdit("(Shift-Alt-Z)",  10, 40, 60, 20, $ES_READONLY + $ES_CENTER , -1)
+HotKeySet("+!z", "Capturer") ; HotKey: Shift-Alt-Z
+GUICtrlSetColor($hHotkeyinfo, $COLOR_BLUE)
+GUICtrlSetTip($hHotkeyinfo, "HotKey")
 Global $hEditbox1 = GUICtrlCreateEdit ( "", 80, 1 , 70 , 60 , $ES_READONLY , -1 )
 GUICtrlSetData($hEditbox1, "       X" & @CRLF &"        |" & @CRLF & "------- | -------- Y" & @CRLF & "        |" & @CRLF & "        |", 1)
 Global $hCoords_Editbox = GUICtrlCreateEdit ( "", 10, 63 , 210 , 35 , $ES_READONLY , -1 )
@@ -27,10 +31,14 @@ Global $hFilename_Editbox = GUICtrlCreateEdit ( "filename.bmp", 120, 100 , 100 ,
 GUICtrlSetTip($hFilename_Editbox, "filename.extension (BMP, GIF, JPEG, PNG, TIF)")
 Global $hTXT_Checkbox = GUICtrlCreateCheckbox("Save coords", 153, 41, 80, 20)
 GUICtrlSetTip($hTXT_Checkbox, "Check to save coordinates to .TXT file")
+Global $hActivateWin_Checkbox = GUICtrlCreateCheckbox("Activate Window:", 10, 127, 100, 20)
+GUICtrlSetTip($hActivateWin_Checkbox, "Check to activate some window on capture" & @CRLF & "Use Title or Class of activated window or process name")
+Global $hActivateWin_Editbox = GUICtrlCreateEdit ( "", 111, 125 , 110 , 25 , $ES_AUTOHSCROLL , -1 )
+GUICtrlSetState($hActivateWin_Editbox,$GUI_DISABLE)
 
 GUISetState()
 
-Global $SizeX, $SizeY, $capturefilename, $savecoordstoo
+Global $SizeX, $SizeY, $capturefilename, $savecoordstoo, $activatewintoo
 Global $hBitmap_GUI, $aMsg
 
 While 1
@@ -42,33 +50,20 @@ While 1
 		 Case $GUI_EVENT_CLOSE, $hClose_Button
             Exit
 		 Case $hRect_Button
-			$capturefilepath = GUICtrlRead($hPath_Editbox, $GUI_READ_EXTENDED)
-			$capturefilename = GUICtrlRead($hFilename_Editbox, $GUI_READ_EXTENDED)
-            GUISetState(@SW_HIDE, $hMain_GUI)
-            Mark_Rect()
-            ; Capture selected area
-            $sBMP_Path = $capturefilepath & "\" & $capturefilename
-			$SizeX = $iX2 - $iX1
-			$SizeY = $iY2 - $IY1
-			Local $coords_str = ("X1=" & $iX1 & " X2=" & $iX2 & " Size=" & $SizeX & @CRLF & "Y1=" & $iY1 &  " Y2=" & $iY2 & " Size=" & $SizeY)
-			GUICtrlSetData($hCoords_Editbox,"");
-			GUICtrlSetData($hCoords_Editbox, $coords_str, 1)
-			If $savecoordstoo == 1 Then
-				  $hTXTfile = FileOpen ($capturefilepath & "\" & $capturefilename & ".txt", 2 ) ; 2=erase contents
-				  FileWriteLine($hTXTfile, $coords_str);
-				  FileClose($hTXTfile)
-			EndIf
-            _ScreenCapture_Capture($sBMP_Path, $iX1, $iY1, $iX2, $iY2, False)
-            GUISetState(@SW_SHOW, $hMain_GUI)
-            ; Display image
-            $hBitmap_GUI = GUICreate("File: " & $capturefilename, $iX2 - $iX1 + 1, $iY2 - $iY1 + 1, 100, 100)
-            $hPic = GUICtrlCreatePic($capturefilepath & "\" & $capturefilename, 0, 0, $iX2 - $iX1 + 1, $iY2 - $iY1 + 1)
-            GUISetState()
+			   Capturer()
 		 Case $hTXT_Checkbox
 			If GuiCtrlRead($hTXT_Checkbox) = $GUI_CHECKED Then
-			   $savecoordstoo = 1;
+			   $savecoordstoo = 1
 			Else
-			   $savecoordstoo = 0;
+			   $savecoordstoo = 0
+			EndIf
+		 Case $hActivateWin_Checkbox
+			If GuiCtrlRead($hActivateWin_Checkbox) = $GUI_CHECKED Then
+			   GUICtrlSetState($hActivateWin_Editbox,$GUI_ENABLE)
+			   $activatewintoo = 1
+			Else
+			   GUICtrlSetState($hActivateWin_Editbox,$GUI_DISABLE)
+			   $activatewintoo = 0
 			EndIf
 	  EndSwitch ;==> aMsg[0]
 
@@ -83,6 +78,35 @@ While 1
 WEnd
 
 ; -------------
+
+Func Capturer()
+   $capturefilepath = GUICtrlRead($hPath_Editbox, $GUI_READ_EXTENDED)
+   $capturefilename = GUICtrlRead($hFilename_Editbox, $GUI_READ_EXTENDED)
+   If $activatewintoo == 1 Then
+		 Local $act1=GUICtrlRead($hActivateWin_Editbox, $GUI_READ_EXTENDED)
+		 WinActivate($act1)
+   EndIf
+   GUISetState(@SW_HIDE, $hMain_GUI)
+   Mark_Rect()
+   ; Capture selected area
+   $sBMP_Path = $capturefilepath & "\" & $capturefilename
+   $SizeX = $iX2 - $iX1
+   $SizeY = $iY2 - $IY1
+   Local $coords_str = ("X1=" & $iX1 & " X2=" & $iX2 & " Size=" & $SizeX & @CRLF & "Y1=" & $iY1 &  " Y2=" & $iY2 & " Size=" & $SizeY)
+   GUICtrlSetData($hCoords_Editbox,"");
+   GUICtrlSetData($hCoords_Editbox, $coords_str, 1)
+   If $savecoordstoo == 1 Then
+		 $hTXTfile = FileOpen ($capturefilepath & "\" & $capturefilename & ".txt", 2 ) ; 2=erase contents
+		 FileWriteLine($hTXTfile, $coords_str);
+		 FileClose($hTXTfile)
+   EndIf
+   _ScreenCapture_Capture($sBMP_Path, $iX1, $iY1, $iX2, $iY2, False)
+   GUISetState(@SW_SHOW, $hMain_GUI)
+   ; Display image
+   $hBitmap_GUI = GUICreate("File: " & $capturefilename, $iX2 - $iX1 + 1, $iY2 - $iY1 + 1, 100, 100)
+   $hPic = GUICtrlCreatePic($capturefilepath & "\" & $capturefilename, 0, 0, $iX2 - $iX1 + 1, $iY2 - $iY1 + 1)
+   GUISetState()
+EndFunc	;==> Capturer
 
 Func Mark_Rect()
 
