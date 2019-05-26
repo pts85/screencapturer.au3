@@ -80,6 +80,7 @@ WEnd
 ; -------------
 
 Func Capturer()
+
    $capturefilepath = GUICtrlRead($hPath_Editbox, $GUI_READ_EXTENDED)
    $capturefilename = GUICtrlRead($hFilename_Editbox, $GUI_READ_EXTENDED)
    If $activatewintoo == 1 Then
@@ -106,6 +107,7 @@ Func Capturer()
    $hBitmap_GUI = GUICreate("File: " & $capturefilename, $iX2 - $iX1 + 1, $iY2 - $iY1 + 1, 100, 100)
    $hPic = GUICtrlCreatePic($capturefilepath & "\" & $capturefilename, 0, 0, $iX2 - $iX1 + 1, $iY2 - $iY1 + 1)
    GUISetState()
+
 EndFunc	;==> Capturer
 
 Func Mark_Rect()
