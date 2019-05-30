@@ -23,7 +23,7 @@ HotKeySet("+!z", "Capturer") ; HotKey: Shift-Alt-Z
 GUICtrlSetColor($hHotkeyinfo, $COLOR_BLUE)
 GUICtrlSetTip($hHotkeyinfo, "HotKey")
 Global $hEditbox1 = GUICtrlCreateEdit ( "", 80, 1 , 70 , 60 , $ES_READONLY , -1 )
-GUICtrlSetData($hEditbox1, "       X" & @CRLF &"        |" & @CRLF & "------- | -------- Y" & @CRLF & "        |" & @CRLF & "        |", 1)
+GUICtrlSetData($hEditbox1, "       Y" & @CRLF &"        |" & @CRLF & "------- | -------- X" & @CRLF & "        |" & @CRLF & "        |", 1)
 Global $hCoords_Editbox = GUICtrlCreateEdit ( "", 10, 63 , 210 , 35 , $ES_READONLY , -1 )
 Global $hPath_Editbox = GUICtrlCreateEdit ( @DesktopDir, 10, 100 , 110 , 25 , $ES_AUTOHSCROLL , -1 )
 GUICtrlSetTip($hPath_Editbox, "Directory for screencapturefiles")
@@ -93,7 +93,7 @@ Func Capturer()
    $sBMP_Path = $capturefilepath & "\" & $capturefilename
    $SizeX = $iX2 - $iX1
    $SizeY = $iY2 - $IY1
-   Local $coords_str = ("X1=" & $iX1 & " X2=" & $iX2 & " Size=" & $SizeX & @CRLF & "Y1=" & $iY1 &  " Y2=" & $iY2 & " Size=" & $SizeY)
+   Local $coords_str = ("Y1=" & $iY1 & " Y2=" & $iY2 & " Size=" & $SizeY & @CRLF & "X1=" & $iX1 &  " X2=" & $iX2 & " Size=" & $SizeX)
    GUICtrlSetData($hCoords_Editbox,"");
    GUICtrlSetData($hCoords_Editbox, $coords_str, 1)
    If $savecoordstoo == 1 Then
