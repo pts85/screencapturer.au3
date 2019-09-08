@@ -18,7 +18,7 @@ Const $sSettingsINIfile=@ScriptDir & "\screencapturer.ini"
 Global $iX1, $iY1, $iX2, $iY2, $aPos, $sMsg, $sBMP_Path
 
 ; Create GUI
-Global $hMain_GUI = GUICreate("ScreenCapturer: Select Rectangle", 230, 200)
+Global $hMain_GUI = GUICreate("ScreenCapturer: Select Rectangle", 230, 220)
 Global $hRect_Button = GUICtrlCreateButton("Mark Area",  10, 10, 60, 30)
 Global $hClose_Button = GUICtrlCreateButton("Close",    160, 10, 60, 30)
 Global $hHotkeyinfo  = GUICtrlCreateEdit("(Shift-Alt-Z)",  10, 40, 60, 20, $ES_READONLY + $ES_CENTER , -1)
@@ -27,19 +27,21 @@ GUICtrlSetColor($hHotkeyinfo, $COLOR_BLUE)
 GUICtrlSetTip($hHotkeyinfo, "HotKey")
 Global $hEditbox1 = GUICtrlCreateEdit ( "", 80, 1 , 70 , 60 , $ES_READONLY , -1 )
 GUICtrlSetData($hEditbox1, "       Y" & @CRLF &"        |" & @CRLF & "------- | -------- X" & @CRLF & "        |" & @CRLF & "        |", 1)
-Global $hCoords_Editbox = GUICtrlCreateEdit ( "", 10, 63 , 210 , 35 , $ES_READONLY , -1 )
-Global $hPath_Editbox = GUICtrlCreateEdit ( @DesktopDir, 10, 100 , 110 , 25 , $ES_AUTOHSCROLL , -1 )
-GUICtrlSetTip($hPath_Editbox, "Directory for screencapturefiles")
-Global $hFilename_Editbox = GUICtrlCreateEdit ( "filename.bmp", 120, 100 , 100 , 25 , $ES_AUTOHSCROLL , -1 )
-GUICtrlSetTip($hFilename_Editbox, "filename.extension (BMP, GIF, JPEG, PNG, TIF)")
-Global $hCoordsTXT_Checkbox = GUICtrlCreateCheckbox("Save coords", 153, 41, 80, 20)
+Global $hCoordsTXT_Checkbox = GUICtrlCreateCheckbox("Save coords", 10, 63, 80, 20)
 GUICtrlSetTip($hCoordsTXT_Checkbox, "Check to save coordinates to .TXT file")
-Global $hAddNumberToFileName_Checkbox = GUICtrlCreateCheckbox("Add incr. number to filename", 10, 126, 150, 20)
-Global $hActivateWin_Checkbox = GUICtrlCreateCheckbox("Activate Window:", 10, 148, 100, 20)
+Global $hCoordsFORMAT_Checkbox = GUICtrlCreateCheckbox("Use other coords format", 95, 63, 130, 20)
+GUICtrlSetTip($hCoordsFORMAT_Checkbox, "Other coords format = " & @CRLF & " _ScreenCapture_xxx function parameter format:" & @CRLF & "Left, Top, Right, Bottom")
+Global $hCoords_Editbox = GUICtrlCreateEdit ( "", 10, 83 , 210 , 35 , $ES_READONLY , -1 )
+Global $hPath_Editbox = GUICtrlCreateEdit ( @DesktopDir, 10, 120 , 110 , 25 , $ES_AUTOHSCROLL , -1 )
+GUICtrlSetTip($hPath_Editbox, "Directory for screencapturefiles")
+Global $hFilename_Editbox = GUICtrlCreateEdit ( "filename.bmp", 120, 120 , 100 , 25 , $ES_AUTOHSCROLL , -1 )
+GUICtrlSetTip($hFilename_Editbox, "filename.extension (BMP, GIF, JPEG, PNG, TIF)")
+Global $hAddNumberToFileName_Checkbox = GUICtrlCreateCheckbox("Add incr. number to filename", 10, 146, 150, 20)
+Global $hActivateWin_Checkbox = GUICtrlCreateCheckbox("Activate Window:", 10, 168, 100, 20)
 GUICtrlSetTip($hActivateWin_Checkbox, "Check to activate some window on capture" & @CRLF & "Use Title or Class of activated window or process name")
-Global $hActivateWin_Editbox = GUICtrlCreateEdit ( "", 111, 147 , 110 , 25 , $ES_AUTOHSCROLL , -1 )
+Global $hActivateWin_Editbox = GUICtrlCreateEdit ( "", 111, 167 , 110 , 25 , $ES_AUTOHSCROLL , -1 )
 GUICtrlSetState($hActivateWin_Editbox,$GUI_DISABLE)
-Global $hSaveSettings_Checkbox = GUICtrlCreateCheckbox("Save as default settings (on close)", 10, 175, 180, 20)
+Global $hSaveSettings_Checkbox = GUICtrlCreateCheckbox("Save as default settings (on close)", 10, 197, 180, 20)
 GUICtrlSetTip($hSaveSettings_Checkbox, "Check to save current settings as default settings to file: " & @CRLF & $sSettingsINIfile)
 
 GUISetState()
@@ -48,6 +50,7 @@ Global $SizeX, $SizeY, $capturefilename, $savecoordstoo, $activatewintoo
 Global $hBitmap_GUI, $aMsg
 Global $iCaptureCount = 0;
 Global $iCaptureCountLast = 0;
+Global $coordsformat = 1
 
 ; Read settings from ini
 If FileExists($sSettingsINIfile) Then
@@ -59,6 +62,10 @@ If FileExists($sSettingsINIfile) Then
    $tempstr = IniRead($sSettingsINIfile, "Settings", "DefaultSaveCoords", "NULL")
 	  If $tempstr <> "NULL" And $tempstr == $GUI_CHECKED Then
 		 GUICtrlSetState($hCoordsTXT_Checkbox, $GUI_CHECKED);
+	  EndIf
+   $tempstr = IniRead($sSettingsINIfile, "Settings", "DefaultCoordsFormat", "NULL")
+	  If $tempstr <> "NULL" And $tempstr == $GUI_CHECKED Then
+		 GUICtrlSetState($hCoordsFORMAT_Checkbox, $GUI_CHECKED);
 	  EndIf
    $tempstr = IniRead($sSettingsINIfile, "Settings", "DefaultAddNumberToFileName", "NULL")
 	  If $tempstr <> "NULL" And $tempstr == $GUI_CHECKED Then
@@ -76,6 +83,7 @@ While 1
 			If GuiCtrlRead($hSaveSettings_Checkbox) = $GUI_CHECKED Then
 			   IniWrite($sSettingsINIfile, "Settings", "DefaultFileName", GUICtrlRead($hFilename_Editbox, $GUI_READ_EXTENDED))
 			   IniWrite($sSettingsINIfile, "Settings", "DefaultSaveCoords", GUICtrlRead($hCoordsTXT_Checkbox))
+			   IniWrite($sSettingsINIfile, "Settings", "DefaultCoordsFormat", GUICtrlRead($hCoordsTXT_Checkbox))
 			   IniWrite($sSettingsINIfile, "Settings", "DefaultAddNumberToFileName", GUICtrlRead($hAddNumberToFileName_Checkbox))
 			EndIf
             Exit
@@ -100,6 +108,12 @@ While 1
 			   $savecoordstoo = 1
 			Else
 			   $savecoordstoo = 0
+			EndIf
+		 Case $hCoordsFORMAT_Checkbox
+			If GuiCtrlRead($hCoordsFORMAT_Checkbox) = $GUI_CHECKED Then
+			   $coordsformat = 2
+			Else
+			   $coordsformat = 1
 			EndIf
 		 Case $hActivateWin_Checkbox
 			If GuiCtrlRead($hActivateWin_Checkbox) = $GUI_CHECKED Then
@@ -137,7 +151,12 @@ Func Capturer()
    $sBMP_Path = $capturefilepath & "\" & $capturefilename
    $SizeX = $iX2 - $iX1
    $SizeY = $iY2 - $IY1
-   Local $coords_str = ("Y1=" & $iY1 & " Y2=" & $iY2 & " Size=" & $SizeY & @CRLF & "X1=" & $iX1 &  " X2=" & $iX2 & " Size=" & $SizeX)
+   Local $coords_str
+   If $coordsformat == 1 Then
+	  $coords_str = ("Y1=" & $iY1 & " Y2=" & $iY2 & " Size=" & $SizeY & @CRLF & "X1=" & $iX1 &  " X2=" & $iX2 & " Size=" & $SizeX)
+   ElseIf $coordsformat == 2 Then
+	  $coords_str = ($iX1 & ", " & $iY1 & ", " & $iX2 & ", " & $iY2) ; Left, Top, Right, Bottom
+   EndIf
    GUICtrlSetData($hCoords_Editbox,"");
    GUICtrlSetData($hCoords_Editbox, $coords_str, 1)
    If $savecoordstoo == 1 Then
